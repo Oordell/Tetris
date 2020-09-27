@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-EMPTY_PEICE_ID = -1
+EMPTY_PIECE_ID = -1
 
 @dataclass
 class GridSquare:
@@ -10,4 +10,4 @@ class GridSquare:
     col: int
     color: tuple
     empty: bool = True
-    peice_id: int = EMPTY_PEICE_ID
+    piece_id: int = EMPTY_PIECE_ID
