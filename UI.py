@@ -3,9 +3,11 @@
 import pygame as py
 from constants import *
 from time import time
-from grid_square import GridSquare
+from grid_square import *
 from dataclasses import dataclass
 import random as rand
+import numpy as np
+from math import cos, sin, pi
 
 #@dataclass
 #class TetrisPeice:
@@ -115,6 +117,7 @@ class TetrisUI(object):
         self.draw_grid()
 
     def new_current_peice(self):
+        self.check_and_remove_full_lines()
         shape = rand.randint(0, self.NUM_OF_SHAPES - 1)
         self.current_peice_id += 1
         # shape = self.current_peice_id - (int(self.current_peice_id / self.NUM_OF_SHAPES) * self.NUM_OF_SHAPES)
@@ -174,7 +177,7 @@ class TetrisUI(object):
                 if self.game_grid[row][col].peice_id == self.current_peice_id:
                     if row == self.NUM_OF_SQUARES_ROWS - 1:
                         return True
-                    elif not self.game_grid[row + 1][col].peice_id == -1 and not self.game_grid[row + 1][col].peice_id == self.current_peice_id:
+                    elif not self.game_grid[row + 1][col].empty and not self.game_grid[row + 1][col].peice_id == self.current_peice_id:
                         return True
         return False
 
@@ -208,7 +211,7 @@ class TetrisUI(object):
                         self.game_grid[row + 1][col].peice_id = self.current_peice_id
                         self.game_grid[row][col].empty = True
                         self.game_grid[row][col].color = self.COLOR_GRID_BG
-                        self.game_grid[row][col].peice_id = -1
+                        self.game_grid[row][col].peice_id = EMPTY_PEICE_ID
         self.current_peice_rotation_center = (self.current_peice_rotation_center[0] + 1, self.current_peice_rotation_center[1])
 
     def move_current_piece_one_left(self):
@@ -223,7 +226,7 @@ class TetrisUI(object):
                         self.game_grid[row][col - 1].peice_id = self.current_peice_id
                         self.game_grid[row][col].empty = True
                         self.game_grid[row][col].color = self.COLOR_GRID_BG
-                        self.game_grid[row][col].peice_id = -1
+                        self.game_grid[row][col].peice_id = EMPTY_PEICE_ID
         self.current_peice_rotation_center = (self.current_peice_rotation_center[0], self.current_peice_rotation_center[1] - 1)
 
     def move_current_piece_one_right(self):
@@ -238,7 +241,7 @@ class TetrisUI(object):
                         self.game_grid[row][col + 1].peice_id = self.current_peice_id
                         self.game_grid[row][col].empty = True
                         self.game_grid[row][col].color = self.COLOR_GRID_BG
-                        self.game_grid[row][col].peice_id = -1
+                        self.game_grid[row][col].peice_id = EMPTY_PEICE_ID
         self.current_peice_rotation_center = (self.current_peice_rotation_center[0], self.current_peice_rotation_center[1] + 1)
 
     def drop_current_peice_to_bottom(self):
@@ -246,8 +249,113 @@ class TetrisUI(object):
             self.move_current_piece_one_down()
         self.new_current_peice()
 
-    def rotate_peice(self):
-        pass
+    def check_and_remove_full_lines(self):
+        row = self.NUM_OF_SQUARES_ROWS - 1
+        while row > 0:
+            row_has_no_peices = True
+            row_is_full = True
+            for col in range(0, self.NUM_OF_SQUARES_COLUMS):
+                if self.game_grid[row][col].empty:
+                    row_is_full = False
+                else:
+                    row_has_no_peices = False
+            if row_has_no_peices:
+                return
+            if row_is_full:
+                print('Row ', row, ' is full..')
+                for r in range(row, 0, -1):
+                    for c in range(0, self.NUM_OF_SQUARES_COLUMS):
+                        self.game_grid[r][c].empty      = self.game_grid[r - 1][c].empty
+                        self.game_grid[r][c].color      = self.game_grid[r - 1][c].color
+                        self.game_grid[r][c].peice_id   = self.game_grid[r - 1][c].peice_id
+                row += 1
+            row -= 1
+            print('row: ', row)
+
+    def rotate_peice_clock_wise(self):
+        current_peice_location = []
+        for row in range(0, self.NUM_OF_SQUARES_ROWS):
+            for col in range(0, self.NUM_OF_SQUARES_COLUMS):
+                if self.game_grid[row][col].peice_id == self.current_peice_id:
+                    current_peice_location.append(self.game_grid[row][col])
+
+        rotated_peice = []
+        for i in range(0, 4):
+            rotated_peice.append(self.rotate_single_square_around_rotation_point(current_peice_location[i], self.current_peice_rotation_center))
+
+        # Check for boundry conditions:
+        move_left = 0
+        move_right = 0
+        for i in range(len(rotated_peice)):
+            if rotated_peice[i][0] < 0:
+                move_right += 1
+            elif rotated_peice[i][0] >= self.NUM_OF_SQUARES_COLUMS:
+                move_left += 1
+        
+        if move_left > 0 and move_right > 0:
+            print('Error: Can\'t move left and right at the same time....')
+        elif move_left > 0:
+            print('moving left')
+            self.current_peice_rotation_center = (self.current_peice_rotation_center[0], self.current_peice_rotation_center[1] - move_left)
+            for i in range(len(rotated_peice)):
+                rotated_peice[i][0] -= move_left
+        elif move_right > 0:
+            print('moving right')
+            self.current_peice_rotation_center = (self.current_peice_rotation_center[0], self.current_peice_rotation_center[1] + move_right)
+            for i in range(len(rotated_peice)):
+                rotated_peice[i][0] += move_right
+
+        can_be_rotated = True
+        for i in range(len(rotated_peice)):
+
+            if not self.game_grid[rotated_peice[i][1]][rotated_peice[i][0]].empty and not self.game_grid[rotated_peice[i][1]][rotated_peice[i][0]].peice_id == self.current_peice_id:
+                can_be_rotated = False
+        
+        # print('Rotation point: ', self.current_peice_rotation_center)
+        # print('Old points: (', current_peice_location[0].row, ', ', current_peice_location[0].col, ')')
+        # print('Old points: (', current_peice_location[1].row, ', ', current_peice_location[1].col, ')')
+        # print('Old points: (', current_peice_location[2].row, ', ', current_peice_location[2].col, ')')
+        # print('Old points: (', current_peice_location[3].row, ', ', current_peice_location[3].col, ')')
+        # print('New points: (', rotated_peice[0][0], ', ', rotated_peice[0][1], ')')
+        # print('New points: (', rotated_peice[1][0], ', ', rotated_peice[1][1], ')')
+        # print('New points: (', rotated_peice[2][0], ', ', rotated_peice[2][1], ')')
+        # print('New points: (', rotated_peice[3][0], ', ', rotated_peice[3][1], ')')
+
+        if can_be_rotated:
+            old_color = self.game_grid[current_peice_location[0].row][current_peice_location[0].col].color
+            for i in range(len(rotated_peice)):
+                self.game_grid[current_peice_location[i].row][current_peice_location[i].col].empty = True
+                self.game_grid[current_peice_location[i].row][current_peice_location[i].col].color = self.COLOR_GRID_BG
+                self.game_grid[current_peice_location[i].row][current_peice_location[i].col].peice_id = EMPTY_PEICE_ID
+            for i in range(len(rotated_peice)):
+                self.game_grid[rotated_peice[i][1]][rotated_peice[i][0]].empty = False
+                self.game_grid[rotated_peice[i][1]][rotated_peice[i][0]].color = old_color
+                self.game_grid[rotated_peice[i][1]][rotated_peice[i][0]].peice_id = self.current_peice_id
+        
+    def rotate_single_square_around_rotation_point(self, square_location, rotation_point, angle_of_rotation=pi/2):
+        rot_mat = [[cos(angle_of_rotation), -sin(angle_of_rotation)],
+                   [sin(angle_of_rotation), cos(angle_of_rotation)]]
+        original_point = [[float(square_location.col - rotation_point[1])], 
+                          [float(square_location.row - rotation_point[0])]]
+
+        result = [0, 0]
+
+        if rotation_point[0] % 1 > 0.3 or rotation_point[1] % 1 > 0.3:
+            #print('half rot spot')
+            for i in range(2):
+                result[i] = round(rot_mat[i][0] * original_point[0][0] + rot_mat[i][1] * original_point[1][0], 3)
+        else:
+            #print('regular rot spot')
+            for i in range(2):
+                result[i] = round(rot_mat[i][0] * original_point[0][0] + rot_mat[i][1] * original_point[1][0])
+
+        #print('Original Point (x, y): ', original_point)
+        #print('Result (x, y): ', result)
+
+        result[0] = int(result[0] + rotation_point[1])
+        result[1] = int(result[1] + rotation_point[0])
+
+        return result
 
     def update_timers(self):
         self.timer_peice_fall_end = time()
@@ -290,7 +398,7 @@ class TetrisUI(object):
                     if event.key == py.K_RIGHT:
                         self.move_current_piece_one_right()
                     if event.key == py.K_UP:
-                        self.rotate_peice()
+                        self.rotate_peice_clock_wise()
 
             self.update_timers()
             self.update_display()
