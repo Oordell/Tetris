@@ -35,7 +35,9 @@ class TetrisUI(object):
                                (SCREEN_WIDTH / 2) + (SIZE_OF_SQUARE * (int(NUM_OF_SQUARES_COLUMS / 2)))]
     
     # Line width for grid:
-    LINE_WIDTH              = 2
+    LINE_WIDTH_2            = 2
+    LINE_WIDTH_4            = 4
+    LINE_WIDTH_5            = 5
 
     # Text:
     FONT_SIZE_SMALL         = 10
@@ -55,6 +57,8 @@ class TetrisUI(object):
     COLOR_PIECE_O           = (250, 250, 10)
     COLOR_PIECES            = [COLOR_PIECE_L, COLOR_PIECE_J, COLOR_PIECE_5, COLOR_PIECE_Z, COLOR_PIECE_T, COLOR_PIECE_I, COLOR_PIECE_O]
     COLOR_TEXT              = (200, 200, 200)
+    COLOR_GHOST_PIECE_LINE  = (170, 170, 170)
+    COLOR_GHOST_PIECE_BG    = (70, 70, 70)
 
     FALL_SPEED_UPDATE_SEC   = 20
     FALL_SPEED_INIT         = float(0.5)
@@ -112,13 +116,13 @@ class TetrisUI(object):
                         self.COLOR_GRID_LINES, 
                         (self.POS_SQUARES_TOP_LEFT[1] + (col * self.SIZE_OF_SQUARE), self.POS_SQUARES_TOP_LEFT[0]),
                         (self.POS_SQUARES_TOP_LEFT[1] + (col * self.SIZE_OF_SQUARE), self.POS_SQUARES_BUTTOM_RIGHT[0]),
-                        self.LINE_WIDTH)
+                        self.LINE_WIDTH_2)
         for row in range(0, self.NUM_OF_SQUARES_ROWS + 1):
             py.draw.line(self.screen_surface, 
                         self.COLOR_GRID_LINES, 
                         (self.POS_SQUARES_TOP_LEFT[1], self.POS_SQUARES_TOP_LEFT[0] + (row * self.SIZE_OF_SQUARE)),
                         (self.POS_SQUARES_BUTTOM_RIGHT[1], self.POS_SQUARES_TOP_LEFT[0] + (row * self.SIZE_OF_SQUARE)),
-                        self.LINE_WIDTH)
+                        self.LINE_WIDTH_2)
     
     def draw_game_data(self):
         # Draw game data:
@@ -232,6 +236,71 @@ class TetrisUI(object):
                     self.POS_SQUARES_TOP_LEFT[0] + self.SIZE_OF_SQUARE * row, 
                     self.SIZE_OF_SQUARE, self.SIZE_OF_SQUARE))
         self.draw_grid()
+        self.draw_ghost_location_if_piece_is_droped()
+        self.draw_border_on_playing_area()
+
+    def draw_ghost_location_if_piece_is_droped(self):
+        num_of_squares_to_drop_piece = self.get_num_of_squares_piece_can_drop_from_current_location()
+        border_thickness = 4
+        for row in range(self.NUM_OF_SQUARES_ROWS):
+            for col in range(self.NUM_OF_SQUARES_COLUMS):
+                if self.game_grid[row][col].piece_id == self.current_piece_id:
+                    if not self.game_grid[row + num_of_squares_to_drop_piece][col].piece_id == self.current_piece_id:
+                        py.draw.rect(self.screen_surface, 
+                                        self.COLOR_GHOST_PIECE_LINE, 
+                                    (self.POS_SQUARES_TOP_LEFT[1] + col * self.SIZE_OF_SQUARE - border_thickness / 2, 
+                                        self.POS_SQUARES_TOP_LEFT[0] + (row + num_of_squares_to_drop_piece) * self.SIZE_OF_SQUARE - border_thickness / 2, 
+                                        self.SIZE_OF_SQUARE + border_thickness, 
+                                        self.SIZE_OF_SQUARE + border_thickness) )
+                        py.draw.rect(self.screen_surface, 
+                                        self.COLOR_GHOST_PIECE_BG, 
+                                    (self.POS_SQUARES_TOP_LEFT[1] + col * self.SIZE_OF_SQUARE + border_thickness / 2, 
+                                        self.POS_SQUARES_TOP_LEFT[0] + (row + num_of_squares_to_drop_piece) * self.SIZE_OF_SQUARE + border_thickness / 2, 
+                                        self.SIZE_OF_SQUARE - border_thickness, 
+                                        self.SIZE_OF_SQUARE - border_thickness) )
+
+    def draw_border_on_playing_area(self):
+        py.draw.line(self.screen_surface, 
+                     self.COLOR_GRID_LINES, 
+                     (self.POS_SQUARES_TOP_LEFT[1], self.POS_SQUARES_TOP_LEFT[0]),
+                     (self.POS_SQUARES_TOP_LEFT[1], self.POS_SQUARES_BUTTOM_RIGHT[0]),
+                     self.LINE_WIDTH_5)
+        py.draw.line(self.screen_surface, 
+                     self.COLOR_GRID_LINES, 
+                     (self.POS_SQUARES_BUTTOM_RIGHT[1], self.POS_SQUARES_TOP_LEFT[0]),
+                     (self.POS_SQUARES_BUTTOM_RIGHT[1], self.POS_SQUARES_BUTTOM_RIGHT[0]),
+                     self.LINE_WIDTH_5)
+        py.draw.line(self.screen_surface, 
+                     self.COLOR_GRID_LINES, 
+                     (self.POS_SQUARES_TOP_LEFT[1], self.POS_SQUARES_TOP_LEFT[0]),
+                     (self.POS_SQUARES_BUTTOM_RIGHT[1], self.POS_SQUARES_TOP_LEFT[0]),
+                     self.LINE_WIDTH_5)
+        py.draw.line(self.screen_surface, 
+                     self.COLOR_GRID_LINES, 
+                     (self.POS_SQUARES_TOP_LEFT[1], self.POS_SQUARES_BUTTOM_RIGHT[0]),
+                     (self.POS_SQUARES_BUTTOM_RIGHT[1], self.POS_SQUARES_BUTTOM_RIGHT[0]),
+                     self.LINE_WIDTH_5)
+        
+    def get_num_of_squares_piece_can_drop_from_current_location(self):
+        num_of_squares_to_drop_piece = 0
+        buttom_reached = False
+        i = 1
+        while not buttom_reached and i < self.NUM_OF_SQUARES_ROWS:
+            for row in range(0, self.NUM_OF_SQUARES_ROWS):
+                for col in range(0, self.NUM_OF_SQUARES_COLUMS):
+                    if self.game_grid[row][col].piece_id == self.current_piece_id:
+                        if i + row >= self.NUM_OF_SQUARES_ROWS:
+                            num_of_squares_to_drop_piece = i - 1
+                            buttom_reached = True
+                            break
+                        if not self.game_grid[row + i][col].empty and not self.game_grid[row + i][col].piece_id == self.current_piece_id:
+                            num_of_squares_to_drop_piece = i - 1
+                            buttom_reached = True
+                            break
+            i += 1
+        if i == self.NUM_OF_SQUARES_ROWS:
+            num_of_squares_to_drop_piece = self.NUM_OF_SQUARES_ROWS - 2
+        return num_of_squares_to_drop_piece
 
     def new_current_piece(self):
         self.check_and_remove_full_lines()
@@ -551,6 +620,4 @@ class TetrisUI(object):
 if __name__ == '__main__':
     print('Running Tetris UI file..')
     T = TetrisUI()
-    print(T.POS_SQUARES_TOP_LEFT)
-    print(T.POS_SQUARES_BUTTOM_RIGHT)
     T.run()
