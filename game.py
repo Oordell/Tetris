@@ -19,6 +19,7 @@ class TetrisGame(object):
         self.num_of_rows = num_of_rows
         self.num_of_columns = num_of_columns
         self.grid = []
+        self.empty_grid()
 
         self.current_piece_id = tpiece.PIECE_ID_EMPTY
         self.current_piece_rotation_center = (0, 0)
@@ -45,6 +46,10 @@ class TetrisGame(object):
         self.next_shape_id = rand.randint(0, self.NUM_OF_SHAPES - 1)
         self.current_piece_rotation_center = tpiece.DEFAULT_ROTATION_CENTER_ALL[self.current_shape_id]
         self.place_new_current_piece()
+        self.reset_all_timers()
+        self.num_of_rows_cleared = 0
+        self.num_of_holes = 0
+        self.max_height_of_stacked_pieces = 0
 
     def empty_grid(self):
         self.grid = []
@@ -216,11 +221,13 @@ class TetrisGame(object):
         self.remove_full_rows()
         self.count_num_of_holes()
         self.meassure_max_height()
-        self.select_new_current_piece()
-        if not self.can_new_piece_be_placed():
-            self.running_game = False
-        else:
+        if self.running_game:
+            self.select_new_current_piece()
+        if self.can_new_piece_be_placed():
             self.place_new_current_piece()
+        else:
+            print('Can\'t place new piece.. ')
+            self.running_game = False 
 
     def remove_full_rows(self):
         row = self.num_of_rows - 1
@@ -280,6 +287,12 @@ class TetrisGame(object):
             self.timer_speed_update_start = time()
             self.fall_freq += self.FALL_SPEED_FREQ_INC
             # print('Speed updated.')
+    
+    def reset_all_timers(self):
+        self.timer_speed_update_start = time()
+        self.timer_speed_update_end = time()
+        self.timer_piece_fall_start = time()
+        self.timer_piece_fall_end = time()
 
     def run(self):
         while self.running_game:

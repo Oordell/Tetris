@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pygame as py
+import pygame.gfxdraw
 from game import TetrisGame as tgame 
 from pieces import TetrisPiece as tpiece
 
@@ -50,8 +51,19 @@ class TetrisUI(object):
                                COLOR_PIECE_T, COLOR_PIECE_I, 
                                COLOR_PIECE_O, COLOR_PIECE_EMPTY]
     COLOR_TEXT              = (200, 200, 200)
+    COLOR_TEXT_START_MENU   = (10, 10, 10)
     COLOR_GHOST_PIECE_LINE  = (170, 170, 170)
     COLOR_GHOST_PIECE_BG    = (70, 70, 70)
+    COLOR_START_MENU_BG     = (120, 120, 255)
+    COLOR_START_MENU_BORDER = (70, 70, 200)
+    COLOR_BTN_START_GAME_BG = (120, 210, 120)
+    COLOR_BTN_START_GAME_BORDER = (30, 150, 30)
+
+    BTN_OFFSET_Y            = 40
+    BTN_WIDTH               = 150
+    BTN_HEIGHT              = 60
+    BTN_TOP_LEFT_X          = (SCREEN_WIDTH / 2) - (BTN_WIDTH / 2)
+    BTN_TOP_LEFT_Y          = (SCREEN_HEIGHT / 2) - (BTN_HEIGHT / 2) + BTN_OFFSET_Y
 
     def __init__(self):
         self.game_logic = tgame(num_of_rows=self.NUM_OF_SQUARES_ROWS, num_of_columns=self.NUM_OF_SQUARES_COLUMS)
@@ -67,9 +79,92 @@ class TetrisUI(object):
 
     def init_game(self):
         self.game_logic.setup_new_game()
+        self.draw_screen_layout()
+
+    def draw_screen_layout(self):
         self.draw_background()
         self.draw_playing_field()
         self.draw_game_data()
+
+    def draw_start_menu(self):
+        self.draw_default_start_and_end_game_rect()
+        self.draw_menu_text("NEW GAME", "START")
+    
+    def draw_game_over_menu(self):
+        self.draw_default_start_and_end_game_rect()
+        self.draw_menu_text("GAME OVER", "NEW GAME")
+
+    def draw_menu_text(self, menu_text, btn_text):
+        font = py.font.Font('freesansbold.ttf', self.FONT_SIZE_LARGE)
+        text = font.render(menu_text, True, self.COLOR_TEXT_START_MENU)
+        text_rect = text.get_rect()
+        text_rect.center = (self.SCREEN_WIDTH / 2, self.SCREEN_HEIGHT / 2 - 40)
+        self.screen_surface.blit(text, text_rect)
+
+        font = py.font.Font('freesansbold.ttf', self.FONT_SIZE_NORMAL)
+        text = font.render(btn_text, True, self.COLOR_TEXT_START_MENU)
+        text_rect = text.get_rect()
+        text_rect.center = (self.SCREEN_WIDTH / 2, self.SCREEN_HEIGHT / 2 + 40)
+        self.screen_surface.blit(text, text_rect)
+    
+    def draw_default_start_and_end_game_rect(self):
+        rect_width = 300
+        rect_height = 200
+        top_left = ((self.SCREEN_WIDTH / 2) - (rect_width / 2), (self.SCREEN_HEIGHT / 2) - (rect_height / 2))
+        corner_radius = 30
+        border_thickness = 5
+        rect = py.Rect(top_left[0], top_left[1], rect_width, rect_height)
+        self.draw_bordered_rounded_rect(rect, self.COLOR_START_MENU_BG, self.COLOR_START_MENU_BORDER, corner_radius, border_thickness)
+
+        corner_radius = 10
+        border_thickness = 4
+        rect = py.Rect(self.BTN_TOP_LEFT_X, self.BTN_TOP_LEFT_Y, self.BTN_WIDTH, self.BTN_HEIGHT)
+        self.draw_bordered_rounded_rect(rect, self.COLOR_BTN_START_GAME_BG, self.COLOR_BTN_START_GAME_BORDER, corner_radius, border_thickness)
+
+    def draw_rounded_rect(self, rect, color, corner_radius):
+        py.gfxdraw.aacircle(self.screen_surface, rect.left + corner_radius, rect.top + corner_radius, corner_radius, color)
+        py.gfxdraw.aacircle(self.screen_surface, rect.left + corner_radius, rect.bottom - corner_radius - 1, corner_radius, color)
+        py.gfxdraw.aacircle(self.screen_surface, rect.right - corner_radius - 1, rect.top + corner_radius, corner_radius, color)
+        py.gfxdraw.aacircle(self.screen_surface, rect.right - corner_radius - 1, rect.bottom - corner_radius - 1, corner_radius, color)
+
+        py.gfxdraw.filled_circle(self.screen_surface, rect.left + corner_radius, rect.top + corner_radius, corner_radius, color)
+        py.gfxdraw.filled_circle(self.screen_surface, rect.left + corner_radius, rect.bottom - corner_radius - 1, corner_radius, color)
+        py.gfxdraw.filled_circle(self.screen_surface, rect.right - corner_radius - 1, rect.top + corner_radius, corner_radius, color)
+        py.gfxdraw.filled_circle(self.screen_surface, rect.right - corner_radius - 1, rect.bottom - corner_radius - 1, corner_radius, color)
+
+        rect_tmp = py.Rect(rect)
+
+        rect_tmp.width -= 2 * corner_radius
+        rect_tmp.center = rect.center
+        pygame.draw.rect(self.screen_surface, color, rect_tmp)
+
+        rect_tmp.width = rect.width
+        rect_tmp.height -= 2 * corner_radius
+        rect_tmp.center = rect.center
+        pygame.draw.rect(self.screen_surface, color, rect_tmp)
+
+    def draw_bordered_rounded_rect(self, rect, color, border_color, corner_radius, border_thickness):
+        if corner_radius < 0:
+            raise ValueError(f"border radius ({corner_radius}) must be >= 0")
+
+        rect_tmp = pygame.Rect(rect)
+        center = rect_tmp.center
+
+        if border_thickness:
+            if corner_radius <= 0:
+                pygame.draw.rect(self.screen_surface, border_color, rect_tmp)
+            else:
+                self.draw_rounded_rect(rect_tmp, border_color, corner_radius)
+
+            rect_tmp.inflate_ip(-2*border_thickness, -2*border_thickness)
+            inner_radius = corner_radius - border_thickness + 1
+        else:
+            inner_radius = corner_radius
+
+        if inner_radius <= 0:
+            pygame.draw.rect(self.screen_surface, color, rect_tmp)
+        else:
+            self.draw_rounded_rect(rect_tmp, color, inner_radius)
 
     def draw_background(self):
         self.screen_surface.fill(self.COLOR_BACKGROUND)
@@ -214,26 +309,24 @@ class TetrisUI(object):
                                      border_thickness )
 
     def update_display(self):
-        self.draw_playing_field()
-        self.draw_game_data()
         py.display.update()
         self.clock.tick(self.fps)
 
     def run(self):
         while True:
-            if self.new_game:
-                self.init_game()
-                self.game_logic.running_game = True
-                self.new_game = False
-            while self.game_logic.running_game:
-                for event in py.event.get():
-                    if event.type == py.QUIT:
-                        py.quit()
-                        quit()
+            for event in py.event.get():
+                if self.new_game and not self.game_logic.running_game:
+                    self.draw_screen_layout()
+                    self.draw_start_menu()
+                    if event.type == py.MOUSEBUTTONDOWN:
+                        x, y = event.pos[0], event.pos[1]
+                        if self.BTN_TOP_LEFT_X < x < self.BTN_TOP_LEFT_X + self.BTN_WIDTH and \
+                            self.BTN_TOP_LEFT_Y < y < self.BTN_TOP_LEFT_Y + self.BTN_HEIGHT:
+                            self.init_game()
+                            self.new_game = False
+                            self.game_logic.running_game = True
+                elif not self.new_game and self.game_logic.running_game:
                     if event.type == py.KEYDOWN:
-                        if event.key == py.K_ESCAPE:
-                            py.quit()
-                            quit()
                         if event.key == py.K_SPACE:
                             self.game_logic.drop_current_piece_to_bottom()
                         if event.key == py.K_DOWN:
@@ -245,14 +338,33 @@ class TetrisUI(object):
                             self.game_logic.move_current_piece_one_right()
                         if event.key == py.K_UP:
                             self.game_logic.rotate_piece_clock_wise()
+                elif not self.new_game and not self.game_logic.running_game:
+                    if event.type == py.MOUSEBUTTONDOWN:
+                        x, y = event.pos[0], event.pos[1]
+                        if self.BTN_TOP_LEFT_X < x < self.BTN_TOP_LEFT_X + self.BTN_WIDTH and \
+                            self.BTN_TOP_LEFT_Y < y < self.BTN_TOP_LEFT_Y + self.BTN_HEIGHT:
+                            self.init_game()
+                            self.new_game = False
+                            self.game_logic.running_game = True
 
-                self.game_logic.update_timers()
-                self.update_display()
+                if event.type == py.QUIT:
+                    py.quit()
+                    quit()
+                if event.type == py.KEYDOWN:
+                    if event.key == py.K_ESCAPE:
+                        py.quit()
+                        quit()
             
+            if not self.new_game:
+                self.game_logic.update_timers()
+                self.draw_playing_field()
+                self.draw_game_data()
+                if not self.game_logic.running_game:
+                    self.draw_game_over_menu()
 
+            self.update_display()
 
 
 if __name__ == '__main__':
     tetris = TetrisUI()
     tetris.run()
-
